@@ -1,0 +1,33 @@
+{
+  "expo": {
+    "name": "Ride the Rocket",
+    "slug": "ride-the-rocket",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "scheme": "ride-the-rocket",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ridetherocket.app"
+    },
+    "android": {
+      "package": "com.ridetherocket.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#121212",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": ["expo-router"],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

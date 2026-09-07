@@ -1,0 +1,40 @@
+# Ride the Rocket — Cursor Rules
+
+## Project
+Cross-platform dice party game built with Expo (React Native) and TypeScript.
+
+## Stack
+- **Framework:** Expo SDK 57 + Expo Router (file-based routing in `app/`)
+- **State:** Zustand with undo/redo history stacks and AsyncStorage persistence
+- **Styling:** React Native StyleSheet, system light/dark via `useColorScheme`
+- **Haptics:** expo-haptics on button presses
+
+## Architecture
+- `app/` — screens (index, setup, play)
+- `src/game/` — game rules, types, Zustand store
+- `src/components/` — reusable UI
+- `src/constants/theme.ts` — NYT-inspired palette and spacing
+- `src/hooks/useTheme.ts` — theme hook
+
+## Game Rules (do not change without explicit request)
+1. Tap dice total (2–12) to add to the pot each roll.
+2. First 3 rolls per round: 7 adds 70; doubles only add their value (no pot double).
+3. After opening rolls: 7 ends the round; doubles = tap 2× only (doubles the pot).
+4. Pull out: player collects current pot, is out for the round; pot resets to 0.
+5. Round ends on 7 or when all active players have pulled out.
+6. Games are 10 or 20 rounds. Undo/redo must remain reliable.
+
+## UI Guidelines
+- Clean, minimal, NYT Games aesthetic — flat surfaces, hairline borders, **no drop shadows**.
+- Primary CTAs use ink black/white — **not** red. Red is reserved only for the deadly **7** key on rolls 4+.
+- Large touch targets on the number pad (Wordle-like key fills).
+- Tablet (width ≥ 768): two-column layout on play screen.
+- Support automatic light/dark themes; never hardcode only light colors.
+- Leaving an in-progress game requires confirmation (progress would be lost).
+- Pulled-out players sort below active players during a round.
+
+## Conventions
+- Prefer focused diffs; match existing patterns.
+- Use TypeScript strictly.
+- No backend — all state is local on device.
+- Do not add monetization or ads until explicitly requested.
