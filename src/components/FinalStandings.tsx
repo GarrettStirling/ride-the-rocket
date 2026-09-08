@@ -70,7 +70,7 @@ export function FinalStandings({ players, roundStats, onNewGame }: FinalStanding
   };
 
   return (
-    <View style={[styles.card, { borderColor: colors.border, backgroundColor: colors.surface }]}>
+    <View style={[styles.card, { backgroundColor: colors.surface }]}>
       <ThemedText variant="label" muted style={styles.kicker}>
         Game over
       </ThemedText>
@@ -100,11 +100,7 @@ export function FinalStandings({ players, roundStats, onNewGame }: FinalStanding
             <View
               style={[
                 styles.standingRow,
-                topThree && {
-                  backgroundColor: colors.background,
-                  borderColor: placeColor(index),
-                  borderWidth: index === 0 ? 2 : StyleSheet.hairlineWidth,
-                },
+                topThree && { backgroundColor: colors.background },
               ]}
             >
               <Text
@@ -152,7 +148,7 @@ export function FinalStandings({ players, roundStats, onNewGame }: FinalStanding
             Round highlights
           </ThemedText>
           {highestPotRound ? (
-            <View style={[styles.statChip, { borderColor: colors.blue, backgroundColor: colors.background }]}>
+            <View style={[styles.statChip, { backgroundColor: colors.background }]}>
               <Text style={[styles.statLabel, { color: colors.blue }]}>Highest pot</Text>
               <Text style={[styles.statValue, { color: colors.text }]}>
                 Round {highestPotRound.round} · {highestPotRound.peakPot}
@@ -160,7 +156,7 @@ export function FinalStandings({ players, roundStats, onNewGame }: FinalStanding
             </View>
           ) : null}
           {longestRound ? (
-            <View style={[styles.statChip, { borderColor: colors.border, backgroundColor: colors.background }]}>
+            <View style={[styles.statChip, { backgroundColor: colors.background }]}>
               <Text style={[styles.statLabel, { color: colors.textMuted }]}>Most rolls</Text>
               <Text style={[styles.statValue, { color: colors.text }]}>
                 Round {longestRound.round} · {longestRound.rolls} rolls
@@ -177,7 +173,6 @@ export function FinalStandings({ players, roundStats, onNewGame }: FinalStanding
 
 const styles = StyleSheet.create({
   card: {
-    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: BorderRadius.md,
     padding: Spacing.lg,
     gap: Spacing.sm,
@@ -240,7 +235,6 @@ const styles = StyleSheet.create({
     marginTop: Spacing.sm,
   },
   statChip: {
-    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: BorderRadius.sm,
     padding: Spacing.md,
     gap: Spacing.xs,

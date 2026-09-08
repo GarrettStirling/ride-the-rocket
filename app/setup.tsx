@@ -1,10 +1,12 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
+  Text,
   TextInput,
   View,
 } from 'react-native';
@@ -57,18 +59,44 @@ export default function SetupScreen() {
   const [names, setNames] = useState<string[]>(() => namesFromParams(params.names));
   const [rounds, setRounds] = useState<RoundCount>(() => roundsFromParams(params.rounds));
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const inputRefs = useRef<Array<TextInput | null>>([]);
+  const pendingFocusIndex = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (pendingFocusIndex.current == null) return;
+    const index = pendingFocusIndex.current;
+    pendingFocusIndex.current = null;
+    const focus = () => inputRefs.current[index]?.focus();
+    requestAnimationFrame(() => {
+      focus();
+      setTimeout(focus, 50);
+    });
+  }, [names.length]);
 
   const updateName = (index: number, value: string) => {
     setNames((prev) => prev.map((name, i) => (i === index ? value : name)));
   };
 
   const addPlayer = () => {
+    pendingFocusIndex.current = names.length;
     setNames((prev) => [...prev, '']);
   };
 
   const removePlayer = (index: number) => {
     if (names.length <= 2) return;
     setNames((prev) => prev.filter((_, i) => i !== index));
+    setFocusedIndex((current) => {
+      if (current == null) return null;
+      if (current === index) return null;
+      if (current > index) return current - 1;
+      return current;
+    });
+  };
+
+  const confirmName = (index: number) => {
+    inputRefs.current[index]?.blur();
+    Keyboard.dismiss();
+    setFocusedIndex(null);
   };
 
   const handleStart = () => {
@@ -85,47 +113,77 @@ export default function SetupScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <SafeAreaView style={styles.flex} edges={['bottom']}>
-          <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            contentContainerStyle={styles.content}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
             <ThemedText variant="label" muted>
               Players
             </ThemedText>
-            <ThemedText variant="caption" muted style={styles.hint}>
-              At least two players. You can rename or add more during the game.
-            </ThemedText>
+            <View style={styles.hint}>
+              <ThemedText variant="caption" muted>
+                At least two players.
+              </ThemedText>
+              <ThemedText variant="caption" muted>
+                You can edit players during the game.
+              </ThemedText>
+            </View>
 
-            {names.map((name, index) => (
-              <StaggerIn key={index} index={index} style={styles.nameRow}>
-                <TextInput
-                  value={name}
-                  onChangeText={(value) => updateName(index, value)}
-                  onFocus={() => setFocusedIndex(index)}
-                  onBlur={() => setFocusedIndex((current) => (current === index ? null : current))}
-                  accessibilityLabel={`Player ${index + 1} name`}
-                  style={[
-                    styles.input,
-                    {
-                      color: colors.text,
-                      backgroundColor: colors.surface,
-                      borderColor: focusedIndex === index ? colors.text : colors.border,
-                    },
-                  ]}
-                  placeholder={`Player ${index + 1}`}
-                  placeholderTextColor={colors.textMuted}
-                />
-                {names.length > 2 && (
-                  <PressableScale
-                    onPress={() => removePlayer(index)}
-                    feedback="selection"
-                    accessibilityRole="button"
-                    accessibilityLabel={`Remove player ${index + 1}`}
-                    scaleTo={Motion.pressScale.chip}
-                    style={styles.remove}
-                  >
-                    <ThemedText style={{ color: colors.textMuted, fontSize: 22 }}>×</ThemedText>
-                  </PressableScale>
-                )}
-              </StaggerIn>
-            ))}
+            {names.map((name, index) => {
+              const focused = focusedIndex === index;
+              return (
+                <StaggerIn key={index} index={index} style={styles.nameRow}>
+                  <TextInput
+                    ref={(ref) => {
+                      inputRefs.current[index] = ref;
+                    }}
+                    value={name}
+                    onChangeText={(value) => updateName(index, value)}
+                    onFocus={() => setFocusedIndex(index)}
+                    onBlur={() => setFocusedIndex((current) => (current === index ? null : current))}
+                    onSubmitEditing={() => confirmName(index)}
+                    returnKeyType="done"
+                    blurOnSubmit
+                    accessibilityLabel={`Player ${index + 1} name`}
+                    style={[
+                      styles.input,
+                      {
+                        color: colors.text,
+                        backgroundColor: focused ? colors.key : colors.surface,
+                      },
+                    ]}
+                    placeholder={`Player ${index + 1}`}
+                    placeholderTextColor={colors.textMuted}
+                  />
+                  {focused ? (
+                    <PressableScale
+                      onPress={() => confirmName(index)}
+                      feedback="selection"
+                      accessibilityRole="button"
+                      accessibilityLabel={`Confirm player ${index + 1} name`}
+                      scaleTo={Motion.pressScale.chip}
+                      style={styles.trailing}
+                    >
+                      <Text style={[styles.check, { color: colors.blue }]}>✓</Text>
+                    </PressableScale>
+                  ) : names.length > 2 ? (
+                    <PressableScale
+                      onPress={() => removePlayer(index)}
+                      feedback="selection"
+                      accessibilityRole="button"
+                      accessibilityLabel={`Remove player ${index + 1}`}
+                      scaleTo={Motion.pressScale.chip}
+                      style={styles.trailing}
+                    >
+                      <ThemedText style={{ color: colors.textMuted, fontSize: 22 }}>×</ThemedText>
+                    </PressableScale>
+                  ) : (
+                    <View style={styles.trailingSpacer} />
+                  )}
+                </StaggerIn>
+              );
+            })}
 
             <Button label="Add player" variant="secondary" onPress={addPlayer} compact feedback="selection" />
 
@@ -149,7 +207,6 @@ export default function SetupScreen() {
                         styles.roundChip,
                         {
                           backgroundColor: selected ? colors.accent : colors.surface,
-                          borderColor: selected ? colors.accent : colors.border,
                         },
                       ]}
                     >
@@ -167,16 +224,16 @@ export default function SetupScreen() {
                 })}
               </View>
             </View>
-          </ScrollView>
 
-          <View style={styles.footer}>
-            <Button
-              label="Start game"
-              variant="blue"
-              onPress={handleStart}
-              disabled={names.length < 2}
-            />
-          </View>
+            <View style={styles.startWrap}>
+              <Button
+                label="Start game"
+                variant="blue"
+                onPress={handleStart}
+                disabled={names.length < 2}
+              />
+            </View>
+          </ScrollView>
         </SafeAreaView>
       </KeyboardAvoidingView>
     </ThemedView>
@@ -188,6 +245,7 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   content: {
     padding: Spacing.lg,
+    paddingBottom: Spacing.xl,
     gap: Spacing.sm,
     maxWidth: 560,
     alignSelf: 'center',
@@ -195,6 +253,7 @@ const styles = StyleSheet.create({
   },
   hint: {
     marginBottom: Spacing.md,
+    gap: 2,
   },
   nameRow: {
     flexDirection: 'row',
@@ -204,16 +263,24 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
-    borderRadius: BorderRadius.sm,
-    borderWidth: 2,
+    borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.md,
     fontSize: FontSize.md,
   },
-  remove: {
+  trailing: {
     padding: Spacing.sm,
-    width: 36,
+    minWidth: 40,
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  trailingSpacer: {
+    width: 40,
+  },
+  check: {
+    fontSize: 22,
+    fontWeight: '700',
+    lineHeight: 26,
   },
   roundSection: {
     marginTop: Spacing.xl,
@@ -225,15 +292,11 @@ const styles = StyleSheet.create({
   },
   roundChip: {
     flex: 1,
-    borderWidth: 2,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.md,
     paddingVertical: Spacing.lg,
     alignItems: 'center',
   },
-  footer: {
-    padding: Spacing.lg,
-    maxWidth: 560,
-    alignSelf: 'center',
-    width: '100%',
+  startWrap: {
+    marginTop: Spacing.xl,
   },
 });

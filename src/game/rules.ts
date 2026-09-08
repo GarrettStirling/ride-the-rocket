@@ -27,3 +27,8 @@ export function isTwoDisabled(rollsThisRound: number): boolean {
 export function isDoublesDisabled(rollsThisRound: number): boolean {
   return rollsThisRound < OPENING_ROLLS;
 }
+
+/** Pull out is only allowed after the opening three rolls (roll 4+). */
+export function isPullOutAllowed(rollsThisRound: number): boolean {
+  return !isInOpeningPhase(rollsThisRound);
+}

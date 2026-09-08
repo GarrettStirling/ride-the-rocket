@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
-import { useEffect } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { useEffect, useState } from 'react';
+import { ScrollView, StyleSheet, useWindowDimensions, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Button } from '../src/components/Button';
 import { PressableScale } from '../src/components/PressableScale';
@@ -37,7 +37,7 @@ function HistoryCard({
 
   return (
     <StaggerIn index={index}>
-      <View style={[styles.card, { borderColor: colors.border }]}>
+      <View style={[styles.card, { backgroundColor: colors.surface }]}>
         <View style={styles.cardTop}>
           <ThemedText variant="caption" muted>
             {formatDate(entry.finishedAt)} · {entry.totalRounds} rounds
@@ -57,7 +57,7 @@ function HistoryCard({
           accessibilityRole="button"
           accessibilityLabel={`Start new game with ${entry.playerNames.join(', ')}`}
           scaleTo={Motion.pressScale.chip}
-          style={[styles.replayBtn, { borderColor: colors.border }]}
+          style={[styles.replayBtn, { backgroundColor: colors.background }]}
         >
           <ThemedText style={{ color: colors.text, fontWeight: '600', fontSize: FontSize.sm }}>
             Start new game with same players
@@ -69,27 +69,52 @@ function HistoryCard({
 }
 
 export default function HomeScreen() {
-  const { colors } = useTheme();
   const present = useGameStore((s) => s.present);
   const gameHistory = useGameStore((s) => s.gameHistory);
   const startGame = useGameStore((s) => s.startGame);
   const hasActiveGame = useGameStore((s) => s.hasActiveGame);
+  const hasSeenOnboarding = useGameStore((s) => s.hasSeenOnboarding);
+  const [hydrated, setHydrated] = useState(() => useGameStore.persist.hasHydrated());
+  const { height } = useWindowDimensions();
+  const hasHistory = gameHistory.length > 0;
 
   useEffect(() => {
+    const unsub = useGameStore.persist.onFinishHydration(() => setHydrated(true));
+    if (useGameStore.persist.hasHydrated()) setHydrated(true);
+    return unsub;
+  }, []);
+
+  useEffect(() => {
+    if (!hydrated) return;
+    if (!hasSeenOnboarding) {
+      router.replace('/onboarding');
+      return;
+    }
     if (present?.status === 'playing') {
       router.replace('/play');
     }
-  }, [present?.status]);
+  }, [hydrated, hasSeenOnboarding, present?.status]);
 
   const replay = (entry: GameHistoryEntry) => {
     startGame(entry.playerNames, entry.totalRounds);
     router.replace('/play');
   };
 
+  if (!hydrated || !hasSeenOnboarding) {
+    return <ThemedView style={styles.container} />;
+  }
+
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safe}>
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          contentContainerStyle={[
+            styles.scroll,
+            hasHistory ? styles.scrollWithHistory : styles.scrollCentered,
+            !hasHistory && { minHeight: height * 0.88 },
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
           <View style={styles.hero}>
             <ThemedText variant="label" muted>
               Dice party game
@@ -103,7 +128,7 @@ export default function HomeScreen() {
           </View>
 
           <View style={styles.actions}>
-            <Button label="New Game" onPress={() => router.push('/setup')} />
+            <Button label="New Game" variant="blue" onPress={() => router.push('/setup')} />
             {hasActiveGame() && present?.status === 'finished' && (
               <Button
                 label="View Final Scores"
@@ -113,7 +138,7 @@ export default function HomeScreen() {
             )}
           </View>
 
-          {gameHistory.length > 0 && (
+          {hasHistory && (
             <View style={styles.history}>
               <ThemedText variant="label" muted style={styles.historyLabel}>
                 Previous games
@@ -152,8 +177,16 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     width: '100%',
   },
+  scrollCentered: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingTop: Spacing.lg,
+  },
+  scrollWithHistory: {
+    flexGrow: 1,
+    paddingTop: Spacing.xxl + Spacing.lg,
+  },
   hero: {
-    paddingTop: Spacing.xxl,
     gap: Spacing.sm,
     marginBottom: Spacing.xl,
   },
@@ -178,8 +211,7 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xs,
   },
   card: {
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.md,
     padding: Spacing.md,
     gap: Spacing.sm,
   },
@@ -195,7 +227,6 @@ const styles = StyleSheet.create({
   },
   replayBtn: {
     alignSelf: 'flex-start',
-    borderWidth: StyleSheet.hairlineWidth,
     borderRadius: BorderRadius.sm,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,

@@ -1,7 +1,8 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, {
   interpolate,
+  interpolateColor,
   useAnimatedStyle,
   useReducedMotion,
   useSharedValue,
@@ -9,14 +10,27 @@ import Animated, {
   withSequence,
   withTiming,
 } from 'react-native-reanimated';
-import { FontSize, Motion, Spacing } from '../constants/theme';
+import { BorderRadius, FontSize, Motion, Spacing } from '../constants/theme';
 import type { GameStatus } from '../game/types';
 import { triggerFeedback } from '../hooks/useFeedback';
 import { useShake } from '../hooks/useShake';
 import { useTheme } from '../hooks/useTheme';
 import { bumpInTiming, fadeTiming, swiftTiming } from '../motion';
-import { BumpText } from './BumpText';
 import { ThemedText } from './Themed';
+
+const COUNT_DURATION_MS = 700;
+const COUNT_STEPS = 11;
+
+function isBigPotMove(
+  label: string | undefined,
+  from: number,
+  to: number,
+  sevenOut?: boolean,
+): boolean {
+  if (label === '2×' || label === '7') return true;
+  if (sevenOut && to === 0 && from > 0) return true;
+  return Math.abs(to - from) >= 50;
+}
 
 interface PotDisplayProps {
   pot: number;
@@ -26,6 +40,7 @@ interface PotDisplayProps {
   rollsThisRound: number;
   lastEvent?: string;
   lastRollNumber?: number;
+  lastRollLabel?: string;
   sevenOut?: boolean;
   openingPhase?: boolean;
 }
@@ -38,6 +53,7 @@ export function PotDisplay({
   rollsThisRound,
   lastEvent,
   lastRollNumber,
+  lastRollLabel,
   sevenOut,
   openingPhase,
 }: PotDisplayProps) {
@@ -46,8 +62,12 @@ export function PotDisplay({
   const { shake, style: shakeStyle } = useShake();
   const lift = useSharedValue(0);
   const roundPulse = useSharedValue(0);
-  const prevPot = useRef(pot);
+  const goldFill = useSharedValue(0);
+  const displayFrom = useRef(pot);
+  const [displayPot, setDisplayPot] = useState(pot);
   const prevSeven = useRef(sevenOut);
+  const prevDoubleKey = useRef<string | null>(null);
+  const doublesReady = useRef(false);
   const prevRound = useRef<number | null>(null);
   const didMount = useRef(false);
 
@@ -70,20 +90,76 @@ export function PotDisplay({
   }, [sevenOut, shake]);
 
   useEffect(() => {
-    if (prevPot.current === pot) return;
-    prevPot.current = pot;
-    if (reduced) return;
+    const from = displayFrom.current;
+    if (from === pot) return;
+
+    const shouldCount = !reduced && isBigPotMove(lastRollLabel, from, pot, sevenOut);
+
+    if (!shouldCount) {
+      setDisplayPot(pot);
+      displayFrom.current = pot;
+      if (!reduced) {
+        lift.value = withSequence(
+          withTiming(1, bumpInTiming),
+          withTiming(0, swiftTiming),
+        );
+      }
+      return;
+    }
+
+    let step = 0;
+    const id = setInterval(() => {
+      step += 1;
+      const t = Math.min(1, step / COUNT_STEPS);
+      const eased = 1 - (1 - t) * (1 - t);
+      setDisplayPot(Math.round(from + (pot - from) * eased));
+      if (step >= COUNT_STEPS) {
+        clearInterval(id);
+        setDisplayPot(pot);
+        displayFrom.current = pot;
+      }
+    }, COUNT_DURATION_MS / COUNT_STEPS);
+
     lift.value = withSequence(
       withTiming(1, bumpInTiming),
-      withTiming(0, swiftTiming),
+      withTiming(0, { duration: COUNT_DURATION_MS * 0.45, easing: swiftTiming.easing }),
     );
-  }, [pot, reduced, lift]);
+
+    return () => {
+      clearInterval(id);
+      setDisplayPot(pot);
+      displayFrom.current = pot;
+    };
+  }, [pot, lastRollLabel, sevenOut, reduced, lift]);
+
+  useEffect(() => {
+    const key = lastRollLabel === '2×' ? `${lastRollNumber}-${pot}` : null;
+    if (!doublesReady.current) {
+      doublesReady.current = true;
+      prevDoubleKey.current = key;
+      return;
+    }
+    if (!key) {
+      prevDoubleKey.current = null;
+      return;
+    }
+    if (prevDoubleKey.current === key) return;
+    prevDoubleKey.current = key;
+
+    goldFill.value = withSequence(
+      withTiming(1, reduced ? fadeTiming : { duration: 140, easing: swiftTiming.easing }),
+      withDelay(
+        90,
+        withTiming(0, reduced ? fadeTiming : { duration: 220, easing: swiftTiming.easing }),
+      ),
+    );
+  }, [lastRollLabel, lastRollNumber, pot, reduced, goldFill]);
 
   useEffect(() => {
     const playPulse = () => {
       roundPulse.value = withSequence(
         withTiming(1, reduced ? fadeTiming : swiftTiming),
-        withDelay(700, withTiming(0, reduced ? fadeTiming : swiftTiming)),
+        withDelay(1800, withTiming(0, reduced ? fadeTiming : swiftTiming)),
       );
     };
 
@@ -109,13 +185,21 @@ export function PotDisplay({
     prevRound.current = currentRound;
   }, [currentRound, status, rollsThisRound, reduced, roundPulse]);
 
+  const goldBoxStyle = useAnimatedStyle(() => ({
+    backgroundColor: interpolateColor(goldFill.value, [0, 1], [potBg, colors.gold]),
+  }));
+
+  const goldTextStyle = useAnimatedStyle(() => ({
+    color: interpolateColor(goldFill.value, [0, 1], [potFg, colors.goldText]),
+  }));
+
   const boxStyle = useAnimatedStyle(() => {
     if (reduced) {
       return { opacity: 1 };
     }
     return {
       transform: [
-        { scale: 1 + lift.value * 0.03 },
+        { scale: 1 + lift.value * 0.03 + goldFill.value * 0.04 },
         { translateY: lift.value * Motion.liftY },
       ],
     };
@@ -161,12 +245,13 @@ export function PotDisplay({
       </View>
 
       <Animated.View style={shakeStyle}>
-        <Animated.View style={[styles.potBox, { backgroundColor: potBg }, boxStyle]}>
-          <BumpText
-            value={pot}
-            style={[styles.potValue, { color: potFg }]}
+        <Animated.View style={[styles.potBox, goldBoxStyle, boxStyle]}>
+          <Animated.Text
+            style={[styles.potValue, goldTextStyle]}
             accessibilityLabel={`Pot value ${pot}${openingPhase ? ', opening rolls' : ''}`}
-          />
+          >
+            {displayPot}
+          </Animated.Text>
         </Animated.View>
       </Animated.View>
 
@@ -186,13 +271,13 @@ export function PotDisplay({
 const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
-    paddingTop: Spacing.sm,
-    paddingBottom: Spacing.sm,
+    paddingTop: 0,
+    paddingBottom: Spacing.md,
     overflow: 'visible',
   },
   roundSlot: {
     height: 28,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
@@ -213,8 +298,9 @@ const styles = StyleSheet.create({
     minWidth: 180,
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.md,
-    borderRadius: 4,
+    borderRadius: BorderRadius.lg,
     alignItems: 'center',
+    overflow: 'hidden',
   },
   potValue: {
     fontSize: FontSize.pot,
@@ -224,11 +310,13 @@ const styles = StyleSheet.create({
   },
   lastEvent: {
     marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
     textAlign: 'center',
     minHeight: 18,
   },
   lastEventPlaceholder: {
     marginTop: Spacing.sm,
+    marginBottom: Spacing.xs,
     height: 18,
   },
 });

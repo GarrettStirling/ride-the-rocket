@@ -20,7 +20,7 @@ Cross-platform dice party game built with Expo (React Native) and TypeScript.
 1. Tap dice total (2–12) to add to the pot each roll.
 2. First 3 rolls per round: 7 adds 70; doubles only add their value (no pot double).
 3. After opening rolls: 7 ends the round; doubles = tap 2× only (doubles the pot).
-4. Pull out: player collects current pot, is out for the round; pot resets to 0.
+4. Pull out: after opening rolls only (roll 4+); player collects current pot, is out for the round; pot stays for everyone still in.
 5. Round ends on 7 or when all active players have pulled out.
 6. Games are 10 or 20 rounds. Undo/redo must remain reliable.
 

@@ -22,7 +22,7 @@ import { StaggerIn } from '../src/components/StaggerIn';
 import { ThemedText, ThemedView } from '../src/components/Themed';
 import { BorderRadius, FontSize, Motion, Spacing } from '../src/constants/theme';
 import { getGameStatusLabel, useGameStore } from '../src/game/gameStore';
-import { isInOpeningPhase } from '../src/game/rules';
+import { isInOpeningPhase, isPullOutAllowed } from '../src/game/rules';
 import { useTheme } from '../src/hooks/useTheme';
 
 export default function PlayScreen() {
@@ -30,6 +30,8 @@ export default function PlayScreen() {
   const navigation = useNavigation();
   const { width, height } = useWindowDimensions();
   const isTablet = width >= 768;
+  const isLandscape = width > height;
+  const isTabletLandscape = isTablet && isLandscape;
 
   const present = useGameStore((s) => s.present);
   const selectRoll = useGameStore((s) => s.selectRoll);
@@ -108,8 +110,10 @@ export default function PlayScreen() {
     .join('. ');
 
   const orderedPlayers = [...present.players].sort((a, b) => {
-    if (a.pulledOutThisRound === b.pulledOutThisRound) return 0;
-    return a.pulledOutThisRound ? 1 : -1;
+    if (a.pulledOutThisRound !== b.pulledOutThisRound) {
+      return a.pulledOutThisRound ? 1 : -1;
+    }
+    return b.score - a.score;
   });
 
   const startNewGameFromSummary = () => {
@@ -165,10 +169,14 @@ export default function PlayScreen() {
         accessibilityRole="button"
         accessibilityLabel="Undo"
         scaleTo={Motion.pressScale.chip}
-        style={[styles.toolBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
+        style={styles.toolBtn}
       >
-        <Text style={[styles.toolIcon, { color: canUndo ? colors.text : colors.textMuted }]}>↶</Text>
-        <Text style={[styles.toolText, { color: canUndo ? colors.text : colors.textMuted }]}>Undo</Text>
+        <Text style={[styles.toolGlyph, { color: canUndo ? colors.text : colors.textMuted }]}>
+          ↶
+        </Text>
+        <Text style={[styles.toolText, { color: canUndo ? colors.text : colors.textMuted }]}>
+          Undo
+        </Text>
       </PressableScale>
       <PressableScale
         onPress={redo}
@@ -177,10 +185,14 @@ export default function PlayScreen() {
         accessibilityRole="button"
         accessibilityLabel="Redo"
         scaleTo={Motion.pressScale.chip}
-        style={[styles.toolBtn, { borderColor: colors.border, backgroundColor: colors.background }]}
+        style={styles.toolBtn}
       >
-        <Text style={[styles.toolText, { color: canRedo ? colors.text : colors.textMuted }]}>Redo</Text>
-        <Text style={[styles.toolIcon, { color: canRedo ? colors.text : colors.textMuted }]}>↷</Text>
+        <Text style={[styles.toolText, { color: canRedo ? colors.text : colors.textMuted }]}>
+          Redo
+        </Text>
+        <Text style={[styles.toolGlyph, { color: canRedo ? colors.text : colors.textMuted }]}>
+          ↷
+        </Text>
       </PressableScale>
     </View>
   );
@@ -197,6 +209,7 @@ export default function PlayScreen() {
         rollsThisRound={present.rollsThisRound}
         lastEvent={present.lastEvent}
         lastRollNumber={present.lastRollNumber}
+        lastRollLabel={present.lastRollLabel}
         sevenOut={present.sevenOutHighlight}
         openingPhase={isPlaying && isInOpeningPhase(present.rollsThisRound)}
       />
@@ -212,7 +225,7 @@ export default function PlayScreen() {
   );
 
   const rightPane = (
-    <View style={[styles.rightPane, !isTablet && { marginTop: -Spacing.xs }]}>
+    <View style={styles.rightPane}>
       <ThemedText variant="label" muted style={styles.playersLabel}>
         Players
       </ThemedText>
@@ -222,7 +235,7 @@ export default function PlayScreen() {
           <PlayerRow
             player={player}
             canRemove={present.players.length > 2}
-            canPullOut={isPlaying}
+            canPullOut={isPlaying && isPullOutAllowed(present.rollsThisRound)}
             onPullOut={() => pullOut(player.id)}
             onRemove={() => removePlayer(player.id)}
             onRename={(name) => renamePlayer(player.id, name)}
@@ -241,8 +254,7 @@ export default function PlayScreen() {
               styles.addInput,
               {
                 color: colors.text,
-                borderColor: addFocused ? colors.text : colors.border,
-                backgroundColor: colors.surface,
+                backgroundColor: addFocused ? colors.key : colors.surface,
               },
             ]}
             onFocus={() => setAddFocused(true)}
@@ -265,49 +277,49 @@ export default function PlayScreen() {
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen
-        options={
-          present.status === 'finished'
-            ? { headerShown: false, gestureEnabled: true }
-            : {
-                title: 'Ride the Rocket',
-                headerTitleAlign: 'center',
-                headerBackVisible: false,
-                gestureEnabled: false,
-                headerLeft: () => (
-                  <PressableScale
-                    onPress={requestEndGame}
-                    hitSlop={12}
-                    feedback="selection"
-                    accessibilityRole="button"
-                    accessibilityLabel="End game"
-                    scaleTo={Motion.pressScale.chip}
-                    style={styles.closeHit}
-                  >
-                    <Text style={[styles.closeX, { color: colors.text }]}>×</Text>
-                  </PressableScale>
-                ),
-                headerRight: () => (
-                  <PressableScale
-                    onPress={() => setRulesOpen(true)}
-                    hitSlop={12}
-                    feedback="selection"
-                    accessibilityRole="button"
-                    accessibilityLabel="Open rules"
-                    scaleTo={Motion.pressScale.chip}
-                    style={styles.rulesHit}
-                  >
-                    <Text style={[styles.rulesLabel, { color: colors.text }]}>Rules</Text>
-                  </PressableScale>
-                ),
-              }
-        }
+        options={{
+          headerShown: false,
+          gestureEnabled: present.status !== 'playing',
+        }}
       />
       <RulesModal visible={rulesOpen} onClose={() => setRulesOpen(false)} />
       <LiveRegion message={liveMessage} />
-      <SafeAreaView
-        style={styles.flex}
-        edges={present.status === 'finished' ? ['top', 'bottom'] : ['bottom']}
-      >
+      <SafeAreaView style={styles.flex} edges={['top', 'bottom']}>
+        {isPlaying ? (
+          <View style={styles.topBar}>
+            <PressableScale
+              onPress={requestEndGame}
+              hitSlop={12}
+              feedback="selection"
+              accessibilityRole="button"
+              accessibilityLabel="End game"
+              scaleTo={Motion.pressScale.chip}
+              style={styles.closeHit}
+            >
+              <Text style={[styles.closeX, { color: colors.text }]}>×</Text>
+            </PressableScale>
+            <Text
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.75}
+              style={[styles.headerTitle, { color: colors.text }]}
+            >
+              Ride the Rocket
+            </Text>
+            <PressableScale
+              onPress={() => setRulesOpen(true)}
+              hitSlop={12}
+              feedback="selection"
+              accessibilityRole="button"
+              accessibilityLabel="Open rules"
+              scaleTo={Motion.pressScale.chip}
+              style={styles.rulesHit}
+            >
+              <Text style={[styles.rulesLabel, { color: colors.text }]}>Rules</Text>
+            </PressableScale>
+          </View>
+        ) : null}
+
         {present.status === 'finished' ? (
           <ScrollView
             contentContainerStyle={[styles.scrollContent, styles.summaryContent]}
@@ -323,13 +335,18 @@ export default function PlayScreen() {
           <ScrollView
             contentContainerStyle={[
               styles.scrollContent,
-              !isTablet && { paddingBottom: height * 0.12 },
+              !isTablet && { paddingBottom: height * 0.08 },
             ]}
+            showsVerticalScrollIndicator={false}
           >
             {isTablet ? (
-              <View style={styles.tabletRow}>
-                <View style={styles.tabletColumn}>{leftPane}</View>
-                <View style={styles.tabletColumn}>{rightPane}</View>
+              <View style={[styles.tabletRow, isTabletLandscape && styles.tabletRowLandscape]}>
+                <View style={[styles.tabletColumn, isTabletLandscape && styles.tabletColumnLeft]}>
+                  {leftPane}
+                </View>
+                <View style={[styles.tabletColumn, isTabletLandscape && styles.tabletColumnRight]}>
+                  {rightPane}
+                </View>
               </View>
             ) : (
               <>
@@ -349,21 +366,30 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   scrollContent: {
     paddingHorizontal: Spacing.lg,
-    paddingTop: Spacing.sm,
+    paddingTop: 0,
     maxWidth: 1100,
     alignSelf: 'center',
     width: '100%',
   },
   summaryContent: {
     maxWidth: 560,
-    paddingTop: Spacing.lg,
+    paddingTop: Spacing.md,
     paddingBottom: Spacing.xl,
+  },
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Spacing.sm,
+    minHeight: 44,
   },
   toolbar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: Spacing.sm,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   toolBtn: {
     flex: 1,
@@ -371,34 +397,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
-    minHeight: 40,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderRadius: BorderRadius.sm,
+    minHeight: 36,
   },
-  toolIcon: {
-    fontSize: 18,
-    fontWeight: '600',
+  toolGlyph: {
+    fontSize: 20,
+    fontWeight: '400',
+    lineHeight: 24,
   },
   toolText: {
     fontSize: FontSize.sm,
     fontWeight: '600',
   },
+  headerTitle: {
+    flex: 1,
+    fontSize: FontSize.md,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginHorizontal: Spacing.xs,
+  },
   closeHit: {
-    minWidth: 64,
+    minWidth: 48,
     alignItems: 'flex-start',
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     paddingVertical: Spacing.xs,
-    marginLeft: Spacing.xs,
   },
   closeX: {
     fontSize: 28,
     fontWeight: '400',
-    lineHeight: 30,
+    lineHeight: 28,
   },
   rulesHit: {
-    minWidth: 64,
+    minWidth: 48,
     alignItems: 'flex-end',
-    paddingHorizontal: Spacing.sm,
+    paddingHorizontal: Spacing.xs,
     paddingVertical: Spacing.xs,
   },
   rulesLabel: {
@@ -410,14 +441,27 @@ const styles = StyleSheet.create({
     gap: Spacing.xl,
     alignItems: 'flex-start',
   },
+  tabletRowLandscape: {
+    gap: Spacing.xxl,
+    maxWidth: 1200,
+    alignSelf: 'center',
+    width: '100%',
+  },
   tabletColumn: {
     flex: 1,
+    minWidth: 0,
+  },
+  tabletColumnLeft: {
+    flex: 1.15,
+  },
+  tabletColumnRight: {
+    flex: 0.85,
   },
   leftPane: {
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   rightPane: {
-    marginTop: Spacing.sm,
+    marginTop: Spacing.md,
   },
   playersLabel: {
     marginBottom: Spacing.xs,
@@ -430,8 +474,7 @@ const styles = StyleSheet.create({
   },
   addInput: {
     flex: 1,
-    borderWidth: 2,
-    borderRadius: BorderRadius.sm,
+    borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing.md,
     paddingVertical: Spacing.sm,
     fontSize: FontSize.md,

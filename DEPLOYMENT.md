@@ -56,7 +56,7 @@ Use your legal name and SSN for tax reporting. You do **not** need an LLC in Cal
 ## 5. Store submission checklist
 
 ### Both stores
-- [ ] Privacy policy URL (host a static page — GitHub Pages works)
+- [ ] Privacy policy URL (host the page in `docs/privacy/` — see § Privacy policy hosting below)
 - [ ] App icon 1024×1024 PNG (no transparency)
 - [ ] Screenshots at required sizes
 - [ ] Short + long description
@@ -72,6 +72,34 @@ Use your legal name and SSN for tax reporting. You do **not** need an LLC in Cal
 - [ ] Package name: `com.ridetherocket.app`
 - [ ] AAB upload (EAS produces this)
 - [ ] Data safety form (declare: no data collected — accurate for current app)
+
+## 5b. Privacy policy hosting (manual)
+
+The draft lives at [`docs/privacy/index.html`](docs/privacy/index.html). Stores need a **public https URL**, not an in-app screen.
+
+### Option A — GitHub Pages (recommended, free)
+
+1. Push this repo to GitHub (if it isn’t already).
+2. On GitHub: **Settings → Pages**.
+3. Under **Build and deployment → Source**, choose **Deploy from a branch**.
+4. Branch: `main` (or your default), folder: `/docs`.
+5. Save. After a minute or two, the site will be at:
+   `https://<your-github-username>.github.io/ride-the-rocket/privacy/`
+6. Open that URL on your phone and confirm the policy loads.
+7. Paste the URL into App Store Connect and Google Play Console.
+
+> If the repo name differs from `ride-the-rocket`, use that name in the URL path instead.
+
+### Option B — Cloudflare Pages or Netlify (also free)
+
+1. Create a free account at [Cloudflare Pages](https://pages.cloudflare.com/) or [Netlify](https://www.netlify.com/).
+2. Deploy only the `docs/privacy` folder (or the whole `docs` folder).
+3. Use the generated `*.pages.dev` / `*.netlify.app` URL (or attach a custom domain later).
+
+### Before you publish the URL
+
+1. Replace `support@ridetherocket.app` in `docs/privacy/index.html` with an email you actually check.
+2. Skim the policy once more after any monetization / analytics changes.
 
 ## 6. Submit builds
 

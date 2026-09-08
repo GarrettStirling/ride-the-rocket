@@ -1,5 +1,5 @@
 import { StyleSheet, Text, TextProps, View, ViewProps } from 'react-native';
-import { FontSize } from '../constants/theme';
+import { BorderRadius, FontSize } from '../constants/theme';
 import { useTheme } from '../hooks/useTheme';
 
 export function ThemedView({ style, ...props }: ViewProps) {
@@ -50,9 +50,7 @@ export function useThemedStyles() {
     },
     surface: {
       backgroundColor: colors.surface,
-      borderColor: colors.border,
-      borderWidth: StyleSheet.hairlineWidth,
-      borderRadius: 12,
+      borderRadius: BorderRadius.lg,
     },
     divider: {
       height: StyleSheet.hairlineWidth,

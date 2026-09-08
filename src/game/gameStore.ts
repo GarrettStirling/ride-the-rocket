@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import { isInOpeningPhase, isPureDoublesValue, OPENING_ROLLS, OPENING_SEVEN_BONUS } from './rules';
+import { isInOpeningPhase, isPullOutAllowed, isPureDoublesValue, OPENING_ROLLS, OPENING_SEVEN_BONUS } from './rules';
 import type { GameHistoryEntry, GameSnapshot, GameStatus, Player, RoundCount } from './types';
 
 const MAX_HISTORY = 20;
@@ -184,11 +184,13 @@ interface GameStore {
   past: GameSnapshot[];
   future: GameSnapshot[];
   gameHistory: GameHistoryEntry[];
+  hasSeenOnboarding: boolean;
 
   hasActiveGame: () => boolean;
   canUndo: () => boolean;
   canRedo: () => boolean;
 
+  completeOnboarding: () => void;
   startGame: (playerNames: string[], totalRounds: RoundCount) => void;
   resetAll: () => void;
   archivePresentIfFinished: () => void;
@@ -244,6 +246,7 @@ export const useGameStore = create<GameStore>()(
       past: [],
       future: [],
       gameHistory: [],
+      hasSeenOnboarding: false,
 
       hasActiveGame: () => {
         const { present } = get();
@@ -252,6 +255,8 @@ export const useGameStore = create<GameStore>()(
 
       canUndo: () => get().past.length > 0,
       canRedo: () => get().future.length > 0,
+
+      completeOnboarding: () => set({ hasSeenOnboarding: true }),
 
       startGame: (playerNames, totalRounds) => {
         const names = playerNames.map((n) => n.trim()).filter(Boolean);
@@ -306,6 +311,7 @@ export const useGameStore = create<GameStore>()(
       pullOut: (playerId) => {
         const { present } = get();
         if (!present || present.status !== 'playing') return;
+        if (!isPullOutAllowed(present.rollsThisRound)) return;
 
         const player = present.players.find((p) => p.id === playerId);
         if (!player || player.pulledOutThisRound) return;
@@ -325,7 +331,8 @@ export const useGameStore = create<GameStore>()(
         let snapshot: GameSnapshot = {
           ...present,
           players,
-          pot: 0,
+          // Pot stays — pull out claims the current value; others keep riding it.
+          pot: present.pot,
           currentPeakPot: Math.max(present.currentPeakPot, payout),
           lastEvent: `${player.name} pulled out · ${payout}`,
           sevenOutHighlight: false,
@@ -432,6 +439,7 @@ export const useGameStore = create<GameStore>()(
         past: state.past.slice(-50),
         future: state.future,
         gameHistory: state.gameHistory,
+        hasSeenOnboarding: state.hasSeenOnboarding,
       }),
       merge: (persisted, current) => {
         const p = persisted as Partial<GameStore> | undefined;
@@ -445,11 +453,16 @@ export const useGameStore = create<GameStore>()(
             }
           : current.present;
 
+        const returningUser =
+          (p?.gameHistory?.length ?? 0) > 0 || present != null;
+
         return {
           ...current,
           ...p,
           present,
           gameHistory: p?.gameHistory ?? current.gameHistory,
+          hasSeenOnboarding:
+            p?.hasSeenOnboarding ?? (returningUser ? true : current.hasSeenOnboarding),
         };
       },
     },

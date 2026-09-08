@@ -60,7 +60,7 @@ export function PlayerRow({
   };
 
   return (
-    <Animated.View style={[styles.row, { borderBottomColor: colors.hairline }, rowStyle]}>
+    <Animated.View style={[styles.row, rowStyle]}>
       <Animated.View
         pointerEvents="none"
         style={[StyleSheet.absoluteFill, { backgroundColor: colors.pulledOut }, washStyle]}
@@ -85,7 +85,7 @@ export function PlayerRow({
             styles.nameInput,
             {
               color: colors.text,
-              borderColor: focused ? colors.text : 'transparent',
+              backgroundColor: focused ? colors.surface : 'transparent',
             },
           ]}
           placeholder="Name"
@@ -97,10 +97,12 @@ export function PlayerRow({
           accessibilityLabel={`${player.name} score ${player.score}${player.pulledOutThisRound ? ', pulled out' : ''}`}
           style={[styles.score, { color: colors.text }]}
         />
+        {player.pulledOutThisRound ? (
+          <Text style={[styles.outTag, { color: colors.textMuted }]} numberOfLines={1}>
+            Pulled Out
+          </Text>
+        ) : null}
       </View>
-      {player.pulledOutThisRound ? (
-        <Text style={[styles.outTag, { color: colors.textMuted }]}>Pulled Out</Text>
-      ) : null}
 
       {!player.pulledOutThisRound ? (
         <Button
@@ -108,13 +110,11 @@ export function PlayerRow({
           onPress={onPullOut}
           disabled={!canPullOut}
           compact
-          variant="blue"
+          variant="danger"
           feedback="success"
           style={styles.pullOut}
         />
-      ) : (
-        <View style={styles.pullOutPlaceholder} />
-      )}
+      ) : null}
 
       <PressableScale
         onPress={confirmRemove}
@@ -123,13 +123,7 @@ export function PlayerRow({
         feedback="selection"
         hitSlop={10}
         scaleTo={Motion.pressScale.chip}
-        style={[
-          styles.removeButton,
-          {
-            borderColor: colors.border,
-            opacity: canRemove ? 1 : 0.35,
-          },
-        ]}
+        style={[styles.removeButton, { opacity: canRemove ? 1 : 0.35 }]}
       >
         <Text style={[styles.removeX, { color: colors.text }]}>×</Text>
       </PressableScale>
@@ -143,7 +137,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: Spacing.sm,
     paddingVertical: Spacing.sm,
-    borderBottomWidth: StyleSheet.hairlineWidth,
     minHeight: 48,
     overflow: 'hidden',
   },
@@ -164,22 +157,21 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.xs,
     paddingHorizontal: Spacing.xs,
     borderRadius: BorderRadius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
   },
   score: {
     fontVariant: ['tabular-nums'],
     fontWeight: '700',
     fontSize: FontSize.lg,
+    flexShrink: 0,
   },
   outTag: {
     fontSize: FontSize.xs,
     fontWeight: '600',
     letterSpacing: 0.2,
+    flexShrink: 0,
+    marginLeft: Spacing.xs,
   },
   pullOut: {
-    minWidth: 92,
-  },
-  pullOutPlaceholder: {
     minWidth: 92,
   },
   removeButton: {
@@ -187,8 +179,6 @@ const styles = StyleSheet.create({
     height: 32,
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: BorderRadius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
   },
   removeX: {
     fontSize: 20,

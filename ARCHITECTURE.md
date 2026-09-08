@@ -69,7 +69,7 @@ History is capped at 50 undo entries in persistence. Finished games are stored i
 
 After opening, **2** and **12** are pad-disabled (always doubles); use **2×**.
 
-**Pull out:** player score += pot; pot = 0; player marked out. If everyone is out, round ends.
+**Pull out:** allowed only after opening rolls (roll 4+). Player score += pot; player marked out; **pot stays** for players still in. If everyone is out, round ends.
 
 **Round end:** reset pot, reset pull-out flags, increment round (or finish game). Do not carry last-roll copy into the next round.
 

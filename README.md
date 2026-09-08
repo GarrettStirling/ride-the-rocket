@@ -35,7 +35,7 @@ npm run web
 3. **Pot** — each roll adds to the pot. The pot is **blue during opening rolls**, then ink for the rest of the round. After opening, doubles double the pot (tap **2×** only).
 4. **Opening rolls** — first 3 rolls of each round: 7 adds 70; doubles don't double. A **ROUND N** flash marks the start of each round without blocking taps.
 5. **Seven** — after opening rolls, the 7 key turns red; rolling 7 ends the round and the pot is lost.
-6. **Pull out** — take the current pot and sit out the rest of the round. Scores sit next to each name.
+6. **Pull out** — after the opening three rolls (roll 4+), take the current pot and sit out the rest of the round. The pot stays for everyone still riding. Scores sit next to each name.
 7. **Undo / Redo** — fix scorer mistakes instantly. Leaving an in-progress game asks for confirmation.
 8. **Game over** — standings, winner, and round highlights only. **New game** reopens setup with the same players and round count.
 

@@ -28,16 +28,15 @@ export function Button({
   const { colors } = useTheme();
 
   const palette = {
-    primary: { bg: colors.accent, text: colors.accentText, border: colors.accent },
-    secondary: { bg: colors.surface, text: colors.text, border: colors.border },
-    ghost: { bg: 'transparent', text: colors.text, border: 'transparent' },
-    danger: { bg: colors.danger, text: colors.dangerText, border: colors.danger },
-    blue: { bg: colors.blue, text: colors.blueText, border: colors.blue },
+    primary: { bg: colors.accent, text: colors.accentText },
+    secondary: { bg: colors.surface, text: colors.text },
+    ghost: { bg: 'transparent', text: colors.text },
+    danger: { bg: colors.danger, text: colors.dangerText },
+    blue: { bg: colors.blue, text: colors.blueText },
   }[variant];
 
-  const bg = disabled ? colors.background : palette.bg;
+  const bg = disabled ? colors.surface : palette.bg;
   const fg = disabled ? colors.textMuted : palette.text;
-  const border = disabled ? colors.border : palette.border;
 
   return (
     <PressableScale
@@ -50,7 +49,7 @@ export function Button({
       style={[
         styles.base,
         compact && styles.compact,
-        { backgroundColor: bg, borderColor: border },
+        { backgroundColor: bg },
         style,
       ]}
     >
@@ -63,7 +62,6 @@ const styles = StyleSheet.create({
   base: {
     minHeight: 52,
     borderRadius: BorderRadius.sm,
-    borderWidth: StyleSheet.hairlineWidth,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: Spacing.lg,

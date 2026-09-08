@@ -22,6 +22,7 @@ export default function RootLayout() {
         }}
       >
         <Stack.Screen name="index" options={{ headerShown: false }} />
+        <Stack.Screen name="onboarding" options={{ headerShown: false, gestureEnabled: false }} />
         <Stack.Screen name="setup" options={{ title: 'New Game' }} />
         <Stack.Screen name="play" options={{ title: 'Ride the Rocket' }} />
       </Stack>

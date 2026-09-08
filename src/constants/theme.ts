@@ -2,7 +2,7 @@ export type ColorScheme = 'light' | 'dark';
 
 /**
  * NYT Games–inspired tokens:
- * flat surfaces, hairline borders, no drop shadows.
+ * flat surfaces, no outline strokes, no drop shadows.
  * Ink black for CTAs. Red is reserved for the deadly-7 key only.
  */
 export const Colors = {
@@ -78,9 +78,9 @@ export const FontSize = {
 } as const;
 
 export const BorderRadius = {
-  sm: 4,
-  md: 6,
-  lg: 8,
+  sm: 14,
+  md: 18,
+  lg: 24,
   full: 999,
 } as const;
 

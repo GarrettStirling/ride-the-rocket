@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
@@ -29,22 +29,31 @@ export function NumberPad({
   onSelectDoubles,
   disabled,
 }: NumberPadProps) {
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
   const isTablet = width >= 768;
+  const isLandscape = width > height;
+  const [padWidth, setPadWidth] = useState(Math.max(width - Spacing.lg * 2, 1));
   const values = rollValues();
-  const columns = isTablet ? 6 : 4;
-  const gap = Spacing.sm;
-  const horizontalPadding = Spacing.lg * 2;
-  const keyWidth = (width - horizontalPadding - gap * (columns - 1)) / columns;
+  // Phone: 3×4 (bigger keys). Tablet: 4 cols portrait / 6 landscape.
+  const columns = isTablet ? (isLandscape ? 6 : 4) : 3;
+  const gap = Spacing.xs;
+  const keyWidth = Math.max((padWidth - gap * (columns - 1)) / columns, 56);
 
   const doublesDisabled = disabled || isDoublesDisabled(rollsThisRound);
   const sevenIsDeadly = !isInOpeningPhase(rollsThisRound);
 
   return (
-    <View style={styles.wrapper}>
+    <View
+      style={styles.wrapper}
+      onLayout={(e) => {
+        const next = e.nativeEvent.layout.width;
+        if (next > 0) setPadWidth(next);
+      }}
+    >
       <View style={[styles.grid, { gap }]}>
         {values.map((value, index) => {
-          const keyDisabled = disabled || (isPureDoublesValue(value) && isPureDoublesKeyDisabled(rollsThisRound));
+          const keyDisabled =
+            disabled || (isPureDoublesValue(value) && isPureDoublesKeyDisabled(rollsThisRound));
           return (
             <StaggerIn key={value} index={index} style={{ width: keyWidth }}>
               <PadKey
@@ -54,6 +63,7 @@ export function NumberPad({
                 }
                 disabled={keyDisabled}
                 hot={value === 7 && sevenIsDeadly}
+                compact={isTablet && isLandscape}
                 onPress={() => onSelect(value)}
               />
             </StaggerIn>
@@ -65,6 +75,7 @@ export function NumberPad({
             accessibilityLabel="Doubles — double the pot"
             disabled={doublesDisabled}
             doubles
+            compact={isTablet && isLandscape}
             onPress={onSelectDoubles}
           />
         </StaggerIn>
@@ -79,6 +90,7 @@ function PadKey({
   disabled,
   hot,
   doubles,
+  compact,
   onPress,
 }: {
   label: string;
@@ -86,6 +98,7 @@ function PadKey({
   disabled: boolean;
   hot?: boolean;
   doubles?: boolean;
+  compact?: boolean;
   onPress: () => void;
 }) {
   const { colors } = useTheme();
@@ -121,7 +134,7 @@ function PadKey({
           accessibilityLabel={accessibilityLabel}
           accessibilityState={{ disabled }}
           scaleTo={Motion.pressScale.key}
-          style={[styles.key, { backgroundColor: bg }]}
+          style={[styles.key, compact && styles.keyCompact, { backgroundColor: bg }]}
           onPress={() => {
             if (disabled) {
               triggerFeedback('error');
@@ -135,6 +148,7 @@ function PadKey({
           <Text
             style={[
               styles.keyText,
+              compact && styles.keyTextCompact,
               doubles && styles.doublesText,
               { color: disabled ? mutedFg : fg },
             ]}
@@ -150,6 +164,7 @@ function PadKey({
 const styles = StyleSheet.create({
   wrapper: {
     gap: Spacing.xs,
+    width: '100%',
   },
   grid: {
     flexDirection: 'row',
@@ -158,19 +173,26 @@ const styles = StyleSheet.create({
   },
   key: {
     width: '100%',
-    aspectRatio: 1.4,
-    borderRadius: BorderRadius.sm,
+    aspectRatio: 1.55,
+    borderRadius: BorderRadius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
+  },
+  keyCompact: {
+    aspectRatio: 1.75,
+    marginBottom: 2,
   },
   keyText: {
     fontSize: FontSize.xl,
     fontWeight: '600',
     fontVariant: ['tabular-nums'],
   },
-  doublesText: {
+  keyTextCompact: {
     fontSize: FontSize.lg,
+  },
+  doublesText: {
+    fontWeight: '800',
     letterSpacing: -0.5,
   },
 });
